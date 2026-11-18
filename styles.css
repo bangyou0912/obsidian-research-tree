@@ -1,0 +1,329 @@
+/* Research Tree */
+
+.rt-root {
+  display: flex;
+  flex-direction: column;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.rt-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.rt-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.rt-legend-status {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  margin-left: 8px;
+}
+
+.rt-canvas {
+  position: relative;
+  flex: 1 1 auto;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  background-color: var(--background-primary);
+  background-image: radial-gradient(var(--background-modifier-border) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.rt-canvas.rt-panning {
+  cursor: grabbing;
+}
+
+.rt-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+.rt-edges {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.rt-edge {
+  fill: none;
+  stroke: var(--text-faint);
+  stroke-width: 1.5;
+}
+
+.rt-edge-main {
+  stroke: var(--interactive-accent);
+  stroke-width: 3.5;
+}
+
+.rt-edge-dim {
+  stroke-dasharray: 5 5;
+  opacity: 0.6;
+}
+
+/* ---------- type colours ---------- */
+
+.rt-type-motivation { --rt-c: var(--color-purple); }
+.rt-type-constraint { --rt-c: var(--color-orange); }
+.rt-type-objective  { --rt-c: var(--color-blue); }
+.rt-type-method     { --rt-c: var(--color-cyan); }
+.rt-type-experiment { --rt-c: var(--color-pink); }
+
+.rt-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--rt-c);
+  background-color: color-mix(in srgb, var(--rt-c) 16%, transparent);
+  white-space: nowrap;
+}
+
+/* ---------- nodes ---------- */
+
+.rt-node {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 7px 10px 8px 13px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background-color: var(--background-secondary);
+  color: var(--text-normal);
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.rt-node::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 8px 0 0 8px;
+  background-color: var(--rt-c);
+}
+
+.rt-node:hover {
+  border-color: var(--text-muted);
+}
+
+.rt-node.rt-selected {
+  box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 4px var(--text-muted);
+}
+
+.rt-node-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 18px;
+}
+
+.rt-node-meta {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rt-src {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.rt-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-orange);
+}
+
+.rt-status-icon {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.rt-node-title {
+  margin-top: 5px;
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.rt-node-reason {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* status: main */
+.rt-status-main {
+  border: 2.5px solid var(--interactive-accent);
+  padding: 5.5px 8.5px 6.5px 11.5px;
+}
+.rt-status-main .rt-node-title { font-weight: 700; }
+.rt-status-main .rt-status-icon { color: var(--interactive-accent); }
+
+/* status: validated */
+.rt-status-validated {
+  border: 2.5px solid var(--color-green);
+  padding: 5.5px 8.5px 6.5px 11.5px;
+}
+.rt-status-validated .rt-node-title { font-weight: 700; }
+.rt-status-validated .rt-status-icon { color: var(--color-green); }
+
+/* status: abandoned */
+.rt-status-abandoned {
+  border-style: dashed;
+  border-color: var(--text-faint);
+}
+.rt-status-abandoned .rt-node-title {
+  text-decoration: line-through;
+  -webkit-line-clamp: 1;
+}
+.rt-status-abandoned .rt-status-icon { color: var(--color-red); }
+
+.rt-node.rt-dim {
+  opacity: 0.55;
+}
+.rt-node.rt-dim::before {
+  background-color: var(--text-faint);
+}
+
+/* drag & drop */
+.rt-node.rt-dragging {
+  opacity: 0.85;
+  cursor: grabbing;
+  z-index: 10;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.rt-node.rt-drop-ok {
+  opacity: 1;
+  box-shadow: 0 0 0 3px var(--color-green);
+}
+
+.rt-node.rt-drop-bad {
+  box-shadow: 0 0 0 3px var(--color-red);
+}
+
+/* add-child button */
+.rt-add {
+  position: absolute;
+  left: 50%;
+  bottom: -11px;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none;
+}
+
+.rt-node:hover .rt-add,
+.rt-node.rt-selected .rt-add {
+  display: flex;
+}
+
+.rt-add:hover {
+  color: var(--text-on-accent);
+  background-color: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+}
+
+/* empty state */
+.rt-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  cursor: default;
+}
+
+/* modals */
+.rt-modal-hint {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  margin-top: 0;
+}
+
+.rt-input {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+textarea.rt-input {
+  resize: vertical;
+}
+
+.rt-input.rt-input-error {
+  border-color: var(--color-red);
+}
+
+/* AI field extraction */
+.rt-dot.rt-dot-hollow {
+  background-color: transparent;
+  border: 1.5px solid var(--color-orange);
+  box-sizing: border-box;
+}
+
+.rt-verdict {
+  font-size: 10px;
+  line-height: 1;
+  color: var(--text-muted);
+}
+.rt-verdict-supports { color: var(--color-green); }
+.rt-verdict-refutes { color: var(--color-red); }
+
+.rt-node.rt-busy {
+  animation: rt-pulse 1s ease-in-out infinite;
+}
+
+@keyframes rt-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--interactive-accent); }
+  50% { box-shadow: 0 0 0 4px var(--interactive-accent); }
+}

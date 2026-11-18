@@ -1,0 +1,9 @@
+{
+  "id": "research-tree",
+  "name": "Research Tree",
+  "version": "0.2.0",
+  "minAppVersion": "1.4.0",
+  "description": "把研究過程畫成一棵樹：Motivation → Constraint → Objective → Method → Experiment，每個節點是一份筆記。",
+  "author": "bangyou0912",
+  "isDesktopOnly": true
+}
