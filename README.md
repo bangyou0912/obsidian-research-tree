@@ -70,7 +70,13 @@
 
 **前提**：這台電腦要裝好 [Claude Code](https://claude.com/claude-code) 並登入。plugin 會呼叫本機的 `claude` 指令，用的是你自己的 Claude 訂閱額度，不需要 API key。沒裝的話只有這個功能不能用，其他功能不受影響。
 
-如果 plugin 找不到 `claude`，到設定 → Research Tree 填入完整路徑（macOS 通常是 `~/.local/bin/claude`，Windows 通常是 `C:\Users\你的帳號\.local\bin\claude.exe`）。
+如果 plugin 找不到 `claude`，到設定 → Research Tree 填入完整路徑：
+
+- macOS：通常是 `~/.local/bin/claude`。
+- Windows 原生安裝版：通常是 `C:\Users\你的帳號\.local\bin\claude.exe`。
+- Windows 用 npm 安裝：通常是 `C:\Users\你的帳號\AppData\Roaming\npm\claude.cmd`。
+
+**Windows 使用者注意**：Claude Code 必須裝在 Windows 本身。裝在 WSL 裡的 Claude Code，Obsidian 呼叫不到。
 
 **隱私**：執行 AI 擷取時，該節點的筆記內容，以及它上層節點的標題與欄位，會經由 Claude Code 送到 Anthropic。不執行 AI 擷取就不會送出任何資料。還沒發表的研究內容請自行判斷要不要用。
 
@@ -94,7 +100,7 @@ sources:
 ## 已知限制
 
 - 只支援桌面版，介面只有繁體中文。
-- Windows 上的 AI 擷取還沒有實際測過。
+- Windows 上的 AI 擷取還沒有實際測過（程式有處理原生安裝版與 npm 版，但沒有在 Windows 上跑過）。遇到問題請把錯誤訊息回報給我。
 - 「把資源拖到節點上」用到 Obsidian 的非公開 API，Obsidian 改版後可能失效。
 - 還沒有匯出論文大綱的功能。
 

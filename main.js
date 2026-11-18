@@ -1100,6 +1100,7 @@ module.exports = class ResearchTreePlugin extends Plugin {
     const candidates = custom ? [custom] : process.platform === 'win32' ? [
       path.join(home, '.local', 'bin', 'claude.exe'),
       path.join(home, '.claude', 'local', 'claude.exe'),
+      path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), 'npm', 'claude.cmd'),
     ] : [
       `${home}/.local/bin/claude`,
       `${home}/.claude/local/claude`,
@@ -1119,43 +1120,82 @@ module.exports = class ResearchTreePlugin extends Plugin {
     }
     const { spawn } = require('child_process');
     const os = require('os');
-    const args = [
-      '-p', '--output-format', 'json', '--no-session-persistence', '--strict-mcp-config',
-      '--tools', '', '--model', this.data.model || 'haiku',
-      '--system-prompt', EXTRACT_SYSTEM, '--json-schema', JSON.stringify(schema),
-    ];
+    const fs = require('fs');
+    const pathMod = require('path');
+    const model = this.data.model || 'haiku';
+    const base = ['-p', '--output-format', 'json', '--no-session-persistence', '--strict-mcp-config'];
+
+    // npm installs on Windows expose claude as a .cmd shim, which can only be started through
+    // cmd.exe. cmd.exe mangles quotes and newlines in arguments, so in that mode the system
+    // prompt goes through a temp file and the schema goes into the prompt instead of argv.
+    const viaShell = this.forceShell || (process.platform === 'win32' && /\.(cmd|bat)$/i.test(bin));
+    const quote = (v) => (/\s/.test(v) ? `"${v}"` : v);
+    let command = bin;
+    let args;
+    let input = prompt;
+    let sysFile = null;
+    if (viaShell) {
+      sysFile = pathMod.join(os.tmpdir(), `research-tree-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
+      fs.writeFileSync(sysFile, EXTRACT_SYSTEM + '\n只輸出一個 JSON 物件，不要加任何其他文字，也不要用 code fence 包起來。', 'utf8');
+      command = quote(bin);
+      args = [...base, '--tools', '""', '--model', model.replace(/[^\w.-]/g, '') || 'haiku', '--system-prompt-file', quote(sysFile)];
+      input = `${prompt}\n\n請輸出符合這個 JSON Schema 的 JSON 物件：\n${JSON.stringify(schema)}`;
+    } else {
+      args = [...base, '--tools', '', '--model', model, '--system-prompt', EXTRACT_SYSTEM, '--json-schema', JSON.stringify(schema)];
+    }
+
     return new Promise((resolve, reject) => {
       const env = Object.assign({}, process.env);
-      const pathMod = require('path');
       const extra = process.platform === 'win32' ? [] : ['/opt/homebrew/bin', '/usr/local/bin'];
       const pathKey = Object.keys(env).find((k) => k.toLowerCase() === 'path') || 'PATH';
       env[pathKey] = [pathMod.dirname(bin), ...extra, env[pathKey] || ''].join(pathMod.delimiter);
-      const child = spawn(bin, args, { cwd: os.tmpdir(), env });
+      const opts = { cwd: os.tmpdir(), env, windowsHide: true };
+      // In shell mode every argument is already a plain token or quoted above, so pass one command line.
+      const child = viaShell
+        ? spawn([command, ...args].join(' '), Object.assign({ shell: true }, opts))
+        : spawn(command, args, opts);
       let out = '';
       let errOut = '';
-      const timer = window.setTimeout(() => { child.kill(); reject(new Error('Claude 沒有在 120 秒內回應')); }, 120000);
+      let settled = false;
+      const finish = (fn, v) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        if (sysFile) { try { fs.unlinkSync(sysFile); } catch (e) { /* already gone */ } }
+        fn(v);
+      };
+      const fail = (msg, fatal) => { const err = new Error(msg); err.fatal = fatal; finish(reject, err); };
+      const timer = window.setTimeout(() => { child.kill(); fail('Claude 沒有在 120 秒內回應', false); }, 120000);
+      // Decode as UTF-8 across chunk boundaries; plain string concatenation can split a CJK character.
+      child.stdout.setEncoding('utf8');
+      child.stderr.setEncoding('utf8');
       child.stdout.on('data', (d) => { out += d; });
       child.stderr.on('data', (d) => { errOut += d; });
-      child.on('error', (e) => { window.clearTimeout(timer); e.fatal = true; reject(e); });
+      child.on('error', (e) => fail(e.message || String(e), true));
       child.on('close', () => {
-        window.clearTimeout(timer);
         let j;
         try { j = JSON.parse(out); } catch (e) {
-          const err = new Error((errOut || out || 'Claude Code CLI 沒有輸出').trim().slice(0, 300));
-          err.fatal = true; // not logged in, bad flag, etc. - no point retrying the next node
-          reject(err);
+          // not logged in, bad flag, etc. - no point retrying the next node
+          fail((errOut || out || 'Claude Code CLI 沒有輸出').trim().slice(0, 300), true);
           return;
         }
-        if (j.is_error || !j.structured_output || typeof j.structured_output !== 'object') {
-          const err = new Error(String(j.result || j.subtype || '沒有取得結構化結果').slice(0, 300));
-          err.fatal = Boolean(j.api_error_status);
-          reject(err);
+        if (j.is_error) {
+          fail(String(j.result || j.subtype || 'Claude 回報錯誤').slice(0, 300), Boolean(j.api_error_status));
           return;
         }
-        resolve(j.structured_output);
+        let data = j.structured_output;
+        if (!data || typeof data !== 'object') {
+          const m = /\{[\s\S]*\}/.exec(String(j.result || ''));
+          try { data = m ? JSON.parse(m[0]) : null; } catch (e) { data = null; }
+        }
+        if (!data || typeof data !== 'object' || Array.isArray(data)) {
+          fail('Claude 沒有回傳可解析的 JSON：' + String(j.result || '').slice(0, 200), false);
+          return;
+        }
+        finish(resolve, data);
       });
       child.stdin.on('error', () => {});
-      child.stdin.end(prompt);
+      child.stdin.end(input, 'utf8');
     });
   }
 
